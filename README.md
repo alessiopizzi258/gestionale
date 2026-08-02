@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Business Hub – Gestionale
 
-## Getting Started
+App Next.js 14 (App Router) + TypeScript per la gestione di finanze, clienti, roadmap progetti e contenuti social di un freelance/agenzia. I dati vengono salvati in `localStorage` nel browser.
 
-First, run the development server:
+## Struttura del progetto
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+app/
+  layout.tsx        layout radice: font, metadata, link globali
+  page.tsx           pagina principale: gestisce lo stato e la navigazione tra sezioni
+  globals.css         tutto lo stile dell'app (design system a variabili CSS)
+
+components/
+  Sidebar.tsx         barra laterale di navigazione
+  Topbar.tsx           barra superiore con titolo sezione e data
+  Modal.tsx             finestra modale generica riutilizzabile
+  Toast.tsx              notifica toast generica riutilizzabile
+  Dashboard.tsx        sezione "Dashboard" (metriche, grafico fatturato, progetti attivi)
+  Finanze.tsx           sezione "Finanze" (entrate/uscite)
+  Clienti.tsx            sezione "Clienti"
+  Roadmap.tsx           sezione "Roadmap progetti"
+  Social.tsx              sezione "Social & Content"
+
+hooks/
+  useLocalStorage.ts   hook generico per stato persistito in localStorage
+
+lib/
+  utils.ts                funzioni di formattazione condivise (date, valuta, id, ecc.)
+
+types/
+  index.ts                interfacce TypeScript condivise (Movimento, Cliente, RoadmapItem, Post, Section)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ogni sezione è un componente indipendente con la propria logica (form, filtri, CRUD); `app/page.tsx` si limita a gestire lo stato condiviso (i quattro array salvati in `localStorage`) e a passarlo ai componenti.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Avvio in locale
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npm run dev
+```
 
-## Learn More
+Apri [http://localhost:3000](http://localhost:3000).
 
-To learn more about Next.js, take a look at the following resources:
+## Build di produzione
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run build
+npm run start
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+La build è stata verificata: compila senza errori TypeScript e genera correttamente la pagina statica.
 
-## Deploy on Vercel
+## Note
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- I font (Inter, Space Grotesk) e le icone (Tabler Icons) vengono caricati da CDN nel layout; serve una connessione internet nel browser dell'utente finale (non durante la build).
+- Tutti i dati (movimenti, clienti, progetti, post) sono salvati solo nel browser dell'utente tramite `localStorage`, sotto le chiavi `bh_movimenti`, `bh_clienti`, `bh_roadmap`, `bh_post`.

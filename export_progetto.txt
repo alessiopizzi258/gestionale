@@ -1,0 +1,2023 @@
+﻿
+====================================================================
+FILE: .eslintrc.json
+====================================================================
+
+{
+  "extends": ["next/core-web-vitals", "next/typescript"]
+}
+
+====================================================================
+FILE: next-env.d.ts
+====================================================================
+
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/building-your-application/configuring/typescript for more information.
+
+====================================================================
+FILE: package.json
+====================================================================
+
+{
+  "name": "gestionale",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "react": "^18",
+    "react-dom": "^18",
+    "next": "14.2.35"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "postcss": "^8",
+    "autoprefixer": "^10",
+    "tailwindcss": "^3.4.1",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.35"
+  }
+}
+
+====================================================================
+FILE: postcss.config.js
+====================================================================
+
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+
+====================================================================
+FILE: README.md
+====================================================================
+
+# Business Hub â€“ Gestionale
+
+App Next.js 14 (App Router) + TypeScript per la gestione di finanze, clienti, roadmap progetti e contenuti social di un freelance/agenzia. I dati vengono salvati in `localStorage` nel browser.
+
+## Struttura del progetto
+
+```
+app/
+  layout.tsx        layout radice: font, metadata, link globali
+  page.tsx           pagina principale: gestisce lo stato e la navigazione tra sezioni
+  globals.css         tutto lo stile dell'app (design system a variabili CSS)
+
+components/
+  Sidebar.tsx         barra laterale di navigazione
+  Topbar.tsx           barra superiore con titolo sezione e data
+  Modal.tsx             finestra modale generica riutilizzabile
+  Toast.tsx              notifica toast generica riutilizzabile
+  Dashboard.tsx        sezione "Dashboard" (metriche, grafico fatturato, progetti attivi)
+  Finanze.tsx           sezione "Finanze" (entrate/uscite)
+  Clienti.tsx            sezione "Clienti"
+  Roadmap.tsx           sezione "Roadmap progetti"
+  Social.tsx              sezione "Social & Content"
+
+hooks/
+  useLocalStorage.ts   hook generico per stato persistito in localStorage
+
+lib/
+  utils.ts                funzioni di formattazione condivise (date, valuta, id, ecc.)
+
+types/
+  index.ts                interfacce TypeScript condivise (Movimento, Cliente, RoadmapItem, Post, Section)
+```
+
+Ogni sezione Ã¨ un componente indipendente con la propria logica (form, filtri, CRUD); `app/page.tsx` si limita a gestire lo stato condiviso (i quattro array salvati in `localStorage`) e a passarlo ai componenti.
+
+## Avvio in locale
+
+```bash
+npm install
+npm run dev
+```
+
+Apri [http://localhost:3000](http://localhost:3000).
+
+## Build di produzione
+
+```bash
+npm run build
+npm run start
+```
+
+La build Ã¨ stata verificata: compila senza errori TypeScript e genera correttamente la pagina statica.
+
+## Note
+
+- I font (Inter, Space Grotesk) e le icone (Tabler Icons) vengono caricati da CDN nel layout; serve una connessione internet nel browser dell'utente finale (non durante la build).
+- Tutti i dati (movimenti, clienti, progetti, post) sono salvati solo nel browser dell'utente tramite `localStorage`, sotto le chiavi `bh_movimenti`, `bh_clienti`, `bh_roadmap`, `bh_post`.
+
+====================================================================
+FILE: tailwind.config.ts
+====================================================================
+
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+  content: [
+    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+      },
+    },
+  },
+  plugins: [],
+};
+export default config;
+
+====================================================================
+FILE: tsconfig.json
+====================================================================
+
+{
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
+
+====================================================================
+FILE: app\globals.css
+====================================================================
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f1117;
+  --bg2: #16181f;
+  --bg3: #1e2029;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #f0f0f0;
+  --text2: #9fa3b1;
+  --text3: #6b6f7e;
+  --accent: #4f6ef7;
+  --accent2: #3a56e0;
+  --green: #22c87a;
+  --red: #f05252;
+  --yellow: #f5a623;
+  --purple: #9b6dff;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --font: 'Inter', sans-serif;
+  --font-display: 'Space Grotesk', sans-serif;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Layout */
+.layout { display: flex; min-height: 100vh; }
+
+/* Sidebar */
+.sidebar {
+  width: 220px;
+  min-height: 100vh;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  z-index: 10;
+}
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-logo .logo-icon {
+  width: 32px; height: 32px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: #fff;
+}
+.sidebar-logo span { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--text); }
+.sidebar-nav { flex: 1; padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all .15s;
+  border: none; background: transparent; width: 100%; text-align: left;
+}
+.nav-item i { font-size: 17px; }
+.nav-item:hover { background: var(--bg3); color: var(--text); }
+.nav-item.active { background: rgba(79,110,247,.15); color: var(--accent); }
+.sidebar-footer { padding: 12px 10px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text3); text-align: center; }
+
+/* Main */
+.main { margin-left: 220px; flex: 1; min-height: 100vh; }
+.topbar {
+  height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky; top: 0; z-index: 5;
+}
+.topbar-title { font-family: var(--font-display); font-size: 16px; font-weight: 700; }
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.date-badge {
+  font-size: 11px; color: var(--text3);
+  background: var(--bg3); border: 1px solid var(--border);
+  padding: 4px 10px; border-radius: 20px;
+}
+.page { padding: 24px; }
+
+/* Cards */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+}
+.card-title { font-family: var(--font-display); font-size: 13px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px; display: flex; align-items: center; gap: 7px; }
+
+/* Metrics grid */
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 22px; }
+.metric {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+}
+.metric-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+.metric-value { font-family: var(--font-display); font-size: 22px; font-weight: 700; }
+.metric-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+.c-green { color: var(--green); }
+.c-red { color: var(--red); }
+.c-blue { color: var(--accent); }
+.c-yellow { color: var(--yellow); }
+.c-purple { color: var(--purple); }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px; font-weight: 500; font-family: var(--font);
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--bg3); border-color: var(--border2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { background: var(--accent2); border-color: var(--accent2); }
+.btn.danger { border-color: rgba(240,82,82,.3); color: var(--red); }
+.btn.danger:hover { background: rgba(240,82,82,.1); }
+.btn.sm { padding: 5px 10px; font-size: 12px; }
+.btn.ghost { border-color: transparent; }
+.btn.ghost:hover { border-color: var(--border); }
+.btn-group { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* Badges */
+.badge {
+  display: inline-flex; align-items: center; padding: 3px 9px;
+  border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: .02em;
+}
+.badge.green { background: rgba(34,200,122,.12); color: var(--green); }
+.badge.red { background: rgba(240,82,82,.12); color: var(--red); }
+.badge.yellow { background: rgba(245,166,35,.12); color: var(--yellow); }
+.badge.blue { background: rgba(79,110,247,.15); color: var(--accent); }
+.badge.purple { background: rgba(155,109,255,.15); color: var(--purple); }
+.badge.gray { background: var(--bg3); color: var(--text2); }
+
+/* Table */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; padding: 9px 12px; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--border); }
+td { padding: 11px 12px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--bg3); }
+
+/* Forms */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group.full { grid-column: 1 / -1; }
+label { font-size: 12px; font-weight: 500; color: var(--text2); }
+input, select, textarea {
+  padding: 9px 12px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font);
+  outline: none;
+  transition: border .15s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+select option { background: var(--bg3); }
+textarea { resize: vertical; min-height: 80px; }
+input[type="range"] { padding: 4px 0; accent-color: var(--accent); }
+
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.65);
+  z-index: 100; display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  width: 100%; max-width: 460px;
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.modal-header h3 { font-family: var(--font-display); font-size: 16px; font-weight: 700; }
+.modal-footer { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
+
+/* Progress bar */
+.progress-wrap { height: 5px; background: var(--bg3); border-radius: 10px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--accent); border-radius: 10px; transition: width .3s; }
+
+/* Chip filter */
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  padding: 5px 14px; border-radius: 20px;
+  font-size: 12px; font-weight: 500;
+  background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text2); cursor: pointer; transition: all .15s;
+  display: flex; align-items: center; gap: 5px;
+}
+.chip:hover { border-color: var(--border2); color: var(--text); }
+.chip.active { background: rgba(79,110,247,.15); border-color: var(--accent); color: var(--accent); }
+
+/* Client card */
+.client-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.client-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px;
+  transition: border-color .15s;
+}
+.client-card:hover { border-color: var(--border2); }
+.avatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(79,110,247,.2); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 13px; font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Post card */
+.post-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.post-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.platform-badge { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+
+/* Chart bar */
+.bar-chart { display: flex; flex-direction: column; gap: 8px; }
+.bar-row { display: flex; align-items: center; gap: 10px; }
+.bar-label { min-width: 30px; font-size: 11px; color: var(--text3); text-align: right; }
+.bar-bg { flex: 1; height: 24px; background: var(--bg3); border-radius: 5px; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--accent); border-radius: 5px; display: flex; align-items: center; padding: 0 8px; font-size: 11px; font-weight: 600; color: rgba(255,255,255,.9); white-space: nowrap; transition: width .5s; }
+
+/* Roadmap */
+.roadmap-item { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 12px; }
+.roadmap-item:hover { border-color: var(--border2); }
+
+/* Activity list */
+.activity-item { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); }
+.activity-item:last-child { border-bottom: none; }
+
+/* Empty state */
+.empty { padding: 40px 20px; text-align: center; color: var(--text3); }
+.empty i { font-size: 36px; display: block; margin-bottom: 10px; opacity: .3; }
+.empty p { font-size: 13px; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: var(--radius); padding: 12px 18px;
+  font-size: 13px; font-weight: 500;
+  box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  z-index: 200;
+  display: flex; align-items: center; gap: 8px;
+  animation: slideIn .2s ease;
+}
+@keyframes slideIn { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
+
+/* Two col layout */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+/* Divider */
+hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+/* Section spacing */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; flex-wrap: wrap; gap: 10px; }
+.section-header h2 { font-family: var(--font-display); font-size: 18px; font-weight: 700; }
+
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .main { margin-left: 0; }
+  .two-col, .three-col, .form-grid { grid-template-columns: 1fr; }
+}
+
+====================================================================
+FILE: app\layout.tsx
+====================================================================
+
+import type { Metadata } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "Business Hub | Gestionale",
+  description: "Gestionale per freelance e piccole agenzie: finanze, clienti, roadmap progetti e contenuti social.",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="it">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+          rel="stylesheet"
+        />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+
+====================================================================
+FILE: app\page.tsx
+====================================================================
+
+"use client";
+import React, { useState } from 'react';
+import Sidebar from '@/components/Sidebar';
+import Topbar from '@/components/Topbar';
+import Toast from '@/components/Toast';
+import Dashboard from '@/components/Dashboard';
+import Finanze from '@/components/Finanze';
+import Clienti from '@/components/Clienti';
+import Roadmap from '@/components/Roadmap';
+import Social from '@/components/Social';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { Movimento, Cliente, RoadmapItem, Post, Section } from '@/types';
+
+export default function Page() {
+  const [section, setSection] = useState<Section>('dashboard');
+
+  const [movimenti, setMovimenti] = useLocalStorage<Movimento[]>('bh_movimenti', []);
+  const [clienti, setClienti] = useLocalStorage<Cliente[]>('bh_clienti', []);
+  const [roadmap, setRoadmap] = useLocalStorage<RoadmapItem[]>('bh_roadmap', []);
+  const [post, setPost] = useLocalStorage<Post[]>('bh_post', []);
+
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const toast = (msg: string) => setToastMsg(msg);
+
+  return (
+    <div className="layout">
+      <Sidebar section={section} setSection={setSection} />
+      <main className="main">
+        <Topbar section={section} />
+        <div className="page">
+          {section === 'dashboard' && (
+            <Dashboard movimenti={movimenti} clienti={clienti} roadmap={roadmap} post={post} />
+          )}
+          {section === 'finanze' && (
+            <Finanze movimenti={movimenti} setMovimenti={setMovimenti} clienti={clienti} toast={toast} />
+          )}
+          {section === 'clienti' && (
+            <Clienti clienti={clienti} setClienti={setClienti} movimenti={movimenti} toast={toast} />
+          )}
+          {section === 'roadmap' && (
+            <Roadmap roadmap={roadmap} setRoadmap={setRoadmap} clienti={clienti} toast={toast} />
+          )}
+          {section === 'social' && <Social post={post} setPost={setPost} clienti={clienti} toast={toast} />}
+        </div>
+      </main>
+      {toastMsg && <Toast msg={toastMsg} onDone={() => setToastMsg(null)} />}
+    </div>
+  );
+}
+
+====================================================================
+FILE: components\Clienti.tsx
+====================================================================
+
+"use client";
+import React, { useState } from 'react';
+import Modal from './Modal';
+import { Cliente, Movimento } from '@/types';
+import { fmt, initials, uid } from '@/lib/utils';
+
+interface ClientiProps {
+  clienti: Cliente[];
+  setClienti: (c: Cliente[]) => void;
+  movimenti: Movimento[];
+  toast: (msg: string) => void;
+}
+
+const TIPO_ICON: Record<string, string> = {
+  social: 'ti-brand-instagram',
+  sito: 'ti-world',
+  software: 'ti-code',
+  altro: 'ti-briefcase',
+};
+const STATO_BADGE: Record<string, string> = {
+  attivo: 'green',
+  potenziale: 'yellow',
+  sospeso: 'red',
+  concluso: 'gray',
+};
+
+export default function Clienti({ clienti, setClienti, movimenti, toast }: ClientiProps) {
+  const [filtro, setFiltro] = useState('tutti');
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState<Partial<Cliente>>({});
+  const [search, setSearch] = useState('');
+
+  const save = () => {
+    if (!form.nome) {
+      alert('Inserisci il nome');
+      return;
+    }
+    const nuovo: Cliente = {
+      id: uid(),
+      nome: form.nome,
+      email: form.email,
+      tel: form.tel,
+      tipo: form.tipo || 'social',
+      stato: form.stato || 'attivo',
+      linkedin: form.linkedin,
+      note: form.note,
+    };
+    setClienti([...clienti, nuovo]);
+    setShowModal(false);
+    setForm({});
+    toast('Cliente aggiunto');
+  };
+
+  const del = (id: string) => {
+    if (confirm('Eliminare questo cliente?')) {
+      setClienti(clienti.filter(c => c.id !== id));
+      toast('Eliminato');
+    }
+  };
+
+  const lista = clienti
+    .filter(c => filtro === 'tutti' || c.tipo === filtro)
+    .filter(
+      c =>
+        !search ||
+        c.nome.toLowerCase().includes(search.toLowerCase()) ||
+        c.email?.toLowerCase().includes(search.toLowerCase())
+    );
+
+  const fatByClient = (id: string) =>
+    movimenti.filter(m => m.tipo === 'entrata' && m.clienteId === id).reduce((a, m) => a + m.importo, 0);
+
+  return (
+    <div>
+      <div className="section-header">
+        <h2>Clienti</h2>
+        <button
+          className="btn primary"
+          onClick={() => {
+            setForm({});
+            setShowModal(true);
+          }}
+        >
+          <i className="ti ti-user-plus" />Nuovo cliente
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        <input
+          type="text"
+          placeholder="Cerca cliente..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{ maxWidth: 220 }}
+        />
+        <div className="chips">
+          {['tutti', 'social', 'sito', 'software', 'altro'].map(f => (
+            <button key={f} className={`chip${filtro === f ? ' active' : ''}`} onClick={() => setFiltro(f)}>
+              {f !== 'tutti' && <i className={`ti ${TIPO_ICON[f]}`} />}
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="client-grid">
+        {lista.length ? (
+          lista.map(c => (
+            <div className="client-card" key={c.id}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <div className="avatar">{initials(c.nome)}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      fontSize: 14,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {c.nome}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+                    <i className={`ti ${TIPO_ICON[c.tipo] || 'ti-briefcase'}`} /> {c.tipo}
+                  </div>
+                </div>
+              </div>
+              {c.email && (
+                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 3 }}>
+                  <i className="ti ti-mail" style={{ marginRight: 5 }} />
+                  {c.email}
+                </div>
+              )}
+              {c.tel && (
+                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 3 }}>
+                  <i className="ti ti-phone" style={{ marginRight: 5 }} />
+                  {c.tel}
+                </div>
+              )}
+              {c.note && (
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--text3)',
+                    marginTop: 6,
+                    fontStyle: 'italic',
+                    overflow: 'hidden',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                  }}
+                >
+                  {c.note}
+                </div>
+              )}
+              <hr />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className={`badge ${STATO_BADGE[c.stato] || 'gray'}`}>{c.stato}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {fatByClient(c.id) > 0 && (
+                    <span style={{ fontSize: 11, color: 'var(--green)', fontWeight: 600 }}>
+                      â‚¬{fmt(fatByClient(c.id))}
+                    </span>
+                  )}
+                  <button className="btn sm danger ghost" onClick={() => del(c.id)}>
+                    <i className="ti ti-trash" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="empty" style={{ gridColumn: '1/-1' }}>
+            <i className="ti ti-users" />
+            <p>Nessun cliente trovato</p>
+          </div>
+        )}
+      </div>
+
+      {showModal && (
+        <Modal
+          title="Nuovo cliente"
+          onClose={() => setShowModal(false)}
+          footer={
+            <>
+              <button className="btn" onClick={() => setShowModal(false)}>
+                Annulla
+              </button>
+              <button className="btn primary" onClick={save}>
+                <i className="ti ti-check" />Salva
+              </button>
+            </>
+          }
+        >
+          <div className="form-grid">
+            <div className="form-group">
+              <label>Nome / Azienda *</label>
+              <input
+                type="text"
+                placeholder="Mario Rossi"
+                value={form.nome || ''}
+                onChange={e => setForm({ ...form, nome: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                placeholder="mario@esempio.it"
+                value={form.email || ''}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>Telefono</label>
+              <input
+                type="text"
+                placeholder="+39 ..."
+                value={form.tel || ''}
+                onChange={e => setForm({ ...form, tel: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>Tipo servizio</label>
+              <select
+                value={form.tipo || 'social'}
+                onChange={e => setForm({ ...form, tipo: e.target.value as Cliente['tipo'] })}
+              >
+                <option value="social">Social Media</option>
+                <option value="sito">Sito Web</option>
+                <option value="software">Software</option>
+                <option value="altro">Altro</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Stato</label>
+              <select
+                value={form.stato || 'attivo'}
+                onChange={e => setForm({ ...form, stato: e.target.value as Cliente['stato'] })}
+              >
+                <option value="attivo">Attivo</option>
+                <option value="potenziale">Potenziale</option>
+                <option value="sospeso">Sospeso</option>
+                <option value="concluso">Concluso</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>LinkedIn / Social</label>
+              <input
+                type="text"
+                placeholder="URL profilo"
+                value={form.linkedin || ''}
+                onChange={e => setForm({ ...form, linkedin: e.target.value })}
+              />
+            </div>
+            <div className="form-group full">
+              <label>Note</label>
+              <textarea
+                placeholder="Contratto, scadenze, preferenze..."
+                value={form.note || ''}
+                onChange={e => setForm({ ...form, note: e.target.value })}
+              />
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+====================================================================
+FILE: components\Dashboard.tsx
+====================================================================
+
+"use client";
+import React from 'react';
+import { Movimento, Cliente, RoadmapItem, Post } from '@/types';
+import { fmt, fmtDate, daysDiff, MESI } from '@/lib/utils';
+
+interface DashboardProps {
+  movimenti: Movimento[];
+  clienti: Cliente[];
+  roadmap: RoadmapItem[];
+  post: Post[];
+}
+
+export default function Dashboard({ movimenti, clienti, roadmap, post }: DashboardProps) {
+  const entrate = movimenti.filter(m => m.tipo === 'entrata').reduce((a, m) => a + m.importo, 0);
+  const uscite = movimenti.filter(m => m.tipo === 'uscita').reduce((a, m) => a + m.importo, 0);
+  const utile = entrate - uscite;
+  const thisYear = new Date().getFullYear();
+  const entrateAnno = movimenti
+    .filter(m => m.tipo === 'entrata' && m.data?.startsWith(String(thisYear)))
+    .reduce((a, m) => a + m.importo, 0);
+
+  // Fatturato per mese (ultime 6 voci)
+  const mesiMap: Record<string, number> = {};
+  movimenti
+    .filter(m => m.tipo === 'entrata' && m.data)
+    .forEach(m => {
+      const d = new Date(m.data + 'T00:00:00');
+      const k = d.getFullYear() + '-' + String(d.getMonth()).padStart(2, '0');
+      mesiMap[k] = (mesiMap[k] || 0) + m.importo;
+    });
+  const mesiKeys = Object.keys(mesiMap).sort().slice(-6);
+  const maxVal = Math.max(...mesiKeys.map(k => mesiMap[k]), 1);
+
+  const attivi = roadmap.filter(r => r.stato !== 'completato').slice(0, 4);
+  const ultimiMov = [...movimenti].reverse().slice(0, 6);
+  const postProg = post.filter(p => p.stato === 'programmato').length;
+
+  return (
+    <div>
+      <div className="section-header">
+        <h2>Dashboard</h2>
+        <span className="date-badge">
+          {new Date().toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' })}
+        </span>
+      </div>
+
+      <div className="metrics">
+        <div className="metric">
+          <div className="metric-label">Entrate totali</div>
+          <div className="metric-value c-green">â‚¬{fmt(entrate)}</div>
+        </div>
+        <div className="metric">
+          <div className="metric-label">Uscite totali</div>
+          <div className="metric-value c-red">â‚¬{fmt(uscite)}</div>
+        </div>
+        <div className="metric">
+          <div className="metric-label">Utile netto</div>
+          <div className="metric-value" style={{ color: utile >= 0 ? 'var(--green)' : 'var(--red)' }}>
+            â‚¬{fmt(utile)}
+          </div>
+        </div>
+        <div className="metric">
+          <div className="metric-label">Fatturato {thisYear}</div>
+          <div className="metric-value c-blue">â‚¬{fmt(entrateAnno)}</div>
+        </div>
+        <div className="metric">
+          <div className="metric-label">Clienti attivi</div>
+          <div className="metric-value c-purple">{clienti.filter(c => c.stato === 'attivo').length}</div>
+        </div>
+        <div className="metric">
+          <div className="metric-label">Post programmati</div>
+          <div className="metric-value c-yellow">{postProg}</div>
+        </div>
+      </div>
+
+      <div className="two-col" style={{ marginBottom: 16 }}>
+        <div className="card">
+          <div className="card-title">
+            <i className="ti ti-chart-bar" />
+            Fatturato mensile
+          </div>
+          {mesiKeys.length ? (
+            <div className="bar-chart">
+              {mesiKeys.map(k => {
+                const [, m] = k.split('-');
+                const pct = Math.round((mesiMap[k] / maxVal) * 100);
+                return (
+                  <div className="bar-row" key={k}>
+                    <span className="bar-label">{MESI[parseInt(m)]}</span>
+                    <div className="bar-bg">
+                      <div className="bar-fill" style={{ width: pct + '%' }}>
+                        â‚¬{fmt(mesiMap[k])}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="empty">
+              <i className="ti ti-chart-bar" />
+              <p>Aggiungi entrate per vedere il grafico</p>
+            </div>
+          )}
+        </div>
+
+        <div className="card">
+          <div className="card-title">
+            <i className="ti ti-activity" />
+            Movimenti recenti
+          </div>
+          {ultimiMov.length ? (
+            ultimiMov.map(m => (
+              <div className="activity-item" key={m.id}>
+                <div>
+                  <div style={{ fontSize: 13 }}>{m.desc}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+                    {fmtDate(m.data)} Â· {m.cat}
+                  </div>
+                </div>
+                <span style={{ fontWeight: 600, color: m.tipo === 'entrata' ? 'var(--green)' : 'var(--red)' }}>
+                  {m.tipo === 'entrata' ? '+' : '-'}â‚¬{fmt(m.importo)}
+                </span>
+              </div>
+            ))
+          ) : (
+            <div className="empty">
+              <i className="ti ti-receipt" />
+              <p>Nessun movimento</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">
+          <i className="ti ti-map" />
+          Progetti in corso
+        </div>
+        {attivi.length ? (
+          attivi.map(r => {
+            const diff = daysDiff(r.fine);
+            return (
+              <div key={r.id} style={{ marginBottom: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                  <span style={{ fontSize: 13, fontWeight: 500 }}>{r.nome}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text3)' }}>
+                    {r.progress}%{r.fine ? ` Â· ${diff !== null && diff < 0 ? 'scaduto' : `${diff}g`}` : ''}
+                  </span>
+                </div>
+                <div className="progress-wrap">
+                  <div className="progress-fill" style={{ width: r.progress + '%' }} />
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="empty">
+            <i className="ti ti-map" />
+            <p>Nessun progetto attivo</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+====================================================================
+FILE: components\Finanze.tsx
+====================================================================
+
+"use client";
+import React, { useState } from 'react';
+import Modal from './Modal';
+import { Movimento, Cliente } from '@/types';
+import { fmt, fmtDate, today, uid } from '@/lib/utils';
+
+type TipoMovimento = 'entrata' | 'uscita';
+
+interface FinanzeProps {
+  movimenti: Movimento[];
+  setMovimenti: (m: Movimento[]) => void;
+  clienti: Cliente[];
+  toast: (msg: string) => void;
+}
+
+const CAT_ENTRATA = ['Fattura', 'Acconto', 'Consulenza', 'Manutenzione', 'Abbonamento', 'Altro'];
+const CAT_USCITA = ['Strumenti', 'Marketing', 'Formazione', 'Tasse', 'Stipendi', 'Software', 'Affitto', 'Altro'];
+
+interface FinanzeForm {
+  tipo?: TipoMovimento;
+  data?: string;
+  desc?: string;
+  cat?: string;
+  clienteId?: string;
+  importo?: string;
+}
+
+export default function Finanze({ movimenti, setMovimenti, clienti, toast }: FinanzeProps) {
+  const [filtro, setFiltro] = useState<'tutti' | TipoMovimento>('tutti');
+  const [showModal, setShowModal] = useState<TipoMovimento | null>(null);
+  const [form, setForm] = useState<FinanzeForm>({});
+
+  const openModal = (tipo: TipoMovimento) => {
+    setForm({ tipo, data: today(), cat: tipo === 'entrata' ? 'Fattura' : 'Strumenti' });
+    setShowModal(tipo);
+  };
+
+  const save = () => {
+    if (!form.importo || !form.desc) {
+      alert('Inserisci importo e descrizione');
+      return;
+    }
+    const nuovo: Movimento = {
+      id: uid(),
+      tipo: (form.tipo as TipoMovimento) || 'entrata',
+      importo: parseFloat(form.importo),
+      desc: form.desc,
+      data: form.data || today(),
+      cat: form.cat || '',
+      clienteId: form.clienteId,
+    };
+    setMovimenti([...movimenti, nuovo]);
+    setShowModal(null);
+    toast('Movimento aggiunto');
+  };
+
+  const del = (id: string) => {
+    if (confirm('Eliminare questo movimento?')) {
+      setMovimenti(movimenti.filter(m => m.id !== id));
+      toast('Eliminato');
+    }
+  };
+
+  const lista = filtro === 'tutti' ? movimenti : movimenti.filter(m => m.tipo === filtro);
+  const entrate = movimenti.filter(m => m.tipo === 'entrata').reduce((a, m) => a + m.importo, 0);
+  const uscite = movimenti.filter(m => m.tipo === 'uscita').reduce((a, m) => a + m.importo, 0);
+
+  return (
+    <div>
+      <div className="section-header">
+        <h2>Finanze</h2>
+        <div className="btn-group">
+          <button className="btn primary" onClick={() => openModal('entrata')}>
+            <i className="ti ti-plus" />Entrata
+          </button>
+          <button className="btn" onClick={() => openModal('uscita')}>
+            <i className="ti ti-minus" />Uscita
+          </button>
+        </div>
+      </div>
+
+      <div className="metrics" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))' }}>
+        <div className="metric">
+          <div className="metric-label">Entrate</div>
+          <div className="metric-value c-green">â‚¬{fmt(entrate)}</div>
+        </div>
+        <div className="metric">
+          <div className="metric-label">Uscite</div>
+          <div className="metric-value c-red">â‚¬{fmt(uscite)}</div>
+        </div>
+        <div className="metric">
+          <div className="metric-label">Saldo</div>
+          <div className="metric-value" style={{ color: entrate - uscite >= 0 ? 'var(--green)' : 'var(--red)' }}>
+            â‚¬{fmt(entrate - uscite)}
+          </div>
+        </div>
+        <div className="metric">
+          <div className="metric-label">NÂ° movimenti</div>
+          <div className="metric-value c-blue">{movimenti.length}</div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <div className="card-title" style={{ margin: 0 }}>
+            <i className="ti ti-list" />Movimenti
+          </div>
+          <div className="chips">
+            {(['tutti', 'entrata', 'uscita'] as const).map(f => (
+              <button key={f} className={`chip${filtro === f ? ' active' : ''}`} onClick={() => setFiltro(f)}>
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Descrizione</th>
+                <th>Categoria</th>
+                <th>Cliente</th>
+                <th>Importo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {lista.length ? (
+                [...lista].reverse().map(m => {
+                  const cl = clienti.find(c => c.id === m.clienteId);
+                  return (
+                    <tr key={m.id}>
+                      <td style={{ color: 'var(--text2)', whiteSpace: 'nowrap' }}>{fmtDate(m.data)}</td>
+                      <td>{m.desc}</td>
+                      <td>
+                        <span className={`badge ${m.tipo === 'entrata' ? 'green' : 'red'}`}>{m.cat}</span>
+                      </td>
+                      <td style={{ color: 'var(--text2)', fontSize: 12 }}>{cl?.nome || 'â€”'}</td>
+                      <td
+                        style={{
+                          fontWeight: 600,
+                          color: m.tipo === 'entrata' ? 'var(--green)' : 'var(--red)',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {m.tipo === 'entrata' ? '+' : '-'}â‚¬{fmt(m.importo)}
+                      </td>
+                      <td>
+                        <button className="btn sm danger ghost" onClick={() => del(m.id)}>
+                          <i className="ti ti-trash" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={6}>
+                    <div className="empty">
+                      <i className="ti ti-receipt" />
+                      <p>Nessun movimento</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {showModal && (
+        <Modal
+          title={showModal === 'entrata' ? 'Nuova entrata' : 'Nuova uscita'}
+          onClose={() => setShowModal(null)}
+          footer={
+            <>
+              <button className="btn" onClick={() => setShowModal(null)}>
+                Annulla
+              </button>
+              <button className="btn primary" onClick={save}>
+                <i className="ti ti-check" />Salva
+              </button>
+            </>
+          }
+        >
+          <div className="form-grid">
+            <div className="form-group">
+              <label>Importo (â‚¬)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={form.importo || ''}
+                onChange={e => setForm({ ...form, importo: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>Data</label>
+              <input type="date" value={form.data || ''} onChange={e => setForm({ ...form, data: e.target.value })} />
+            </div>
+            <div className="form-group full">
+              <label>Descrizione</label>
+              <input
+                type="text"
+                placeholder="Es. Fattura #001 â€“ Mario Rossi"
+                value={form.desc || ''}
+                onChange={e => setForm({ ...form, desc: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>Categoria</label>
+              <select value={form.cat || ''} onChange={e => setForm({ ...form, cat: e.target.value })}>
+                {(showModal === 'entrata' ? CAT_ENTRATA : CAT_USCITA).map(c => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+            {showModal === 'entrata' && (
+              <div className="form-group">
+                <label>Cliente</label>
+                <select value={form.clienteId || ''} onChange={e => setForm({ ...form, clienteId: e.target.value })}>
+                  <option value="">â€” nessuno â€”</option>
+                  {clienti.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+====================================================================
+FILE: components\Modal.tsx
+====================================================================
+
+"use client";
+import React, { useEffect, ReactNode } from 'react';
+
+interface ModalProps {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
+}
+
+export default function Modal({ title, onClose, children, footer }: ModalProps) {
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    document.addEventListener('keydown', esc);
+    return () => document.removeEventListener('keydown', esc);
+  }, [onClose]);
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <h3>{title}</h3>
+          <button className="btn sm ghost" onClick={onClose}>
+            <i className="ti ti-x" />
+          </button>
+        </div>
+        {children}
+        {footer && <div className="modal-footer">{footer}</div>}
+      </div>
+    </div>
+  );
+}
+
+====================================================================
+FILE: components\Roadmap.tsx
+====================================================================
+
+"use client";
+import React, { useState } from 'react';
+import Modal from './Modal';
+import { RoadmapItem, Cliente } from '@/types';
+import { today, uid, fmtDate, daysDiff } from '@/lib/utils';
+
+interface RoadmapProps {
+  roadmap: RoadmapItem[];
+  setRoadmap: (r: RoadmapItem[]) => void;
+  clienti: Cliente[];
+  toast: (msg: string) => void;
+}
+
+const STATO_COLOR: Record<string, string> = {
+  pianificato: 'yellow',
+  'in corso': 'blue',
+  revisione: 'purple',
+  completato: 'green',
+};
+
+interface RoadmapForm extends Omit<Partial<RoadmapItem>, 'progress'> {
+  progress?: number | string;
+}
+
+export default function Roadmap({ roadmap, setRoadmap, clienti, toast }: RoadmapProps) {
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState<RoadmapForm>({});
+  const [filtro, setFiltro] = useState('tutti');
+
+  const save = () => {
+    if (!form.nome) {
+      alert('Inserisci il nome del progetto');
+      return;
+    }
+    const nuovo: RoadmapItem = {
+      id: uid(),
+      nome: form.nome,
+      clienteId: form.clienteId,
+      inizio: form.inizio,
+      fine: form.fine,
+      stato: form.stato || 'pianificato',
+      progress: parseInt(String(form.progress)) || 0,
+      note: form.note,
+    };
+    setRoadmap([...roadmap, nuovo]);
+    setShowModal(false);
+    setForm({});
+    toast('Progetto aggiunto');
+  };
+
+  const update = (id: string, changes: Partial<RoadmapItem>) =>
+    setRoadmap(roadmap.map(r => (r.id === id ? { ...r, ...changes } : r)));
+
+  const del = (id: string) => {
+    if (confirm('Eliminare questo progetto?')) {
+      setRoadmap(roadmap.filter(r => r.id !== id));
+      toast('Eliminato');
+    }
+  };
+
+  const lista = filtro === 'tutti' ? roadmap : roadmap.filter(r => r.stato === filtro);
+
+  return (
+    <div>
+      <div className="section-header">
+        <h2>Roadmap progetti</h2>
+        <div className="btn-group">
+          <div className="chips">
+            {['tutti', 'pianificato', 'in corso', 'revisione', 'completato'].map(f => (
+              <button key={f} className={`chip${filtro === f ? ' active' : ''}`} onClick={() => setFiltro(f)}>
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+          <button
+            className="btn primary"
+            onClick={() => {
+              setForm({ inizio: today() });
+              setShowModal(true);
+            }}
+          >
+            <i className="ti ti-plus" />Progetto
+          </button>
+        </div>
+      </div>
+
+      {lista.length ? (
+        lista.map(r => {
+          const cl = clienti.find(c => c.id === r.clienteId);
+          const diff = daysDiff(r.fine);
+          const diffColor =
+            diff === null ? 'var(--text3)' : diff < 0 ? 'var(--red)' : diff < 7 ? 'var(--yellow)' : 'var(--accent)';
+          const diffLabel =
+            diff === null
+              ? ''
+              : diff < 0
+              ? `Scaduto ${Math.abs(diff)}g fa`
+              : diff === 0
+              ? 'Scade oggi'
+              : `${diff} giorni alla fine`;
+          return (
+            <div className="roadmap-item" key={r.id}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: 10,
+                  gap: 10,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, marginBottom: 3 }}>
+                    {r.nome}
+                  </div>
+                  {cl && (
+                    <div style={{ fontSize: 12, color: 'var(--text3)' }}>
+                      <i className="ti ti-user" /> {cl.nome}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                  <span className={`badge ${STATO_COLOR[r.stato] || 'gray'}`}>{r.stato}</span>
+                  <button className="btn sm danger ghost" onClick={() => del(r.id)}>
+                    <i className="ti ti-trash" />
+                  </button>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text3)', marginBottom: 12, flexWrap: 'wrap' }}>
+                {r.inizio && (
+                  <span>
+                    <i className="ti ti-calendar" /> Inizio: {fmtDate(r.inizio)}
+                  </span>
+                )}
+                {r.fine && (
+                  <span>
+                    <i className="ti ti-calendar-event" /> Fine: {fmtDate(r.fine)}
+                  </span>
+                )}
+                {diff !== null && <span style={{ color: diffColor, fontWeight: 600 }}>{diffLabel}</span>}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5 }}>
+                <span style={{ color: 'var(--text2)' }}>Avanzamento</span>
+                <span style={{ fontWeight: 600 }}>{r.progress}%</span>
+              </div>
+              <div className="progress-wrap" style={{ marginBottom: 10 }}>
+                <div className="progress-fill" style={{ width: r.progress + '%' }} />
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={r.progress}
+                style={{ width: '100%', marginBottom: 8 }}
+                onChange={e => update(r.id, { progress: parseInt(e.target.value) })}
+              />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <select
+                  value={r.stato}
+                  onChange={e => update(r.id, { stato: e.target.value as RoadmapItem['stato'] })}
+                  style={{ fontSize: 12, padding: '4px 8px' }}
+                >
+                  <option value="pianificato">Pianificato</option>
+                  <option value="in corso">In corso</option>
+                  <option value="revisione">In revisione</option>
+                  <option value="completato">Completato</option>
+                </select>
+              </div>
+              {r.note && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    fontSize: 12,
+                    color: 'var(--text2)',
+                    paddingTop: 10,
+                    borderTop: '1px solid var(--border)',
+                  }}
+                >
+                  {r.note}
+                </div>
+              )}
+            </div>
+          );
+        })
+      ) : (
+        <div className="empty">
+          <i className="ti ti-map" />
+          <p>Nessun progetto â€” aggiungine uno</p>
+        </div>
+      )}
+
+      {showModal && (
+        <Modal
+          title="Nuovo progetto"
+          onClose={() => setShowModal(false)}
+          footer={
+            <>
+              <button className="btn" onClick={() => setShowModal(false)}>
+                Annulla
+              </button>
+              <button className="btn primary" onClick={save}>
+                <i className="ti ti-check" />Salva
+              </button>
+            </>
+          }
+        >
+          <div className="form-grid">
+            <div className="form-group full">
+              <label>Nome progetto *</label>
+              <input
+                type="text"
+                placeholder="Es. Sito vetrina â€“ CaffÃ¨ Milano"
+                value={form.nome || ''}
+                onChange={e => setForm({ ...form, nome: e.target.value })}
+              />
+            </div>
+            <div className="form-group full">
+              <label>Cliente</label>
+              <select value={form.clienteId || ''} onChange={e => setForm({ ...form, clienteId: e.target.value })}>
+                <option value="">â€” nessuno â€”</option>
+                {clienti.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Data inizio</label>
+              <input type="date" value={form.inizio || ''} onChange={e => setForm({ ...form, inizio: e.target.value })} />
+            </div>
+            <div className="form-group">
+              <label>Scadenza</label>
+              <input type="date" value={form.fine || ''} onChange={e => setForm({ ...form, fine: e.target.value })} />
+            </div>
+            <div className="form-group">
+              <label>Stato</label>
+              <select
+                value={form.stato || 'pianificato'}
+                onChange={e => setForm({ ...form, stato: e.target.value as RoadmapItem['stato'] })}
+              >
+                <option value="pianificato">Pianificato</option>
+                <option value="in corso">In corso</option>
+                <option value="revisione">In revisione</option>
+                <option value="completato">Completato</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Avanzamento: {form.progress || 0}%</label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={form.progress || 0}
+                onChange={e => setForm({ ...form, progress: e.target.value })}
+              />
+            </div>
+            <div className="form-group full">
+              <label>Note / attivitÃ </label>
+              <textarea
+                placeholder="Fasi, task, blocchi..."
+                value={form.note || ''}
+                onChange={e => setForm({ ...form, note: e.target.value })}
+              />
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+====================================================================
+FILE: components\Sidebar.tsx
+====================================================================
+
+"use client";
+import React from 'react';
+import { Section } from '@/types';
+
+const SECTIONS: { id: Section; label: string; icon: string }[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: 'ti-home' },
+  { id: 'finanze', label: 'Finanze', icon: 'ti-wallet' },
+  { id: 'clienti', label: 'Clienti', icon: 'ti-users' },
+  { id: 'roadmap', label: 'Roadmap', icon: 'ti-map' },
+  { id: 'social', label: 'Social & Content', icon: 'ti-brand-instagram' },
+];
+
+interface SidebarProps {
+  section: Section;
+  setSection: (s: Section) => void;
+}
+
+export default function Sidebar({ section, setSection }: SidebarProps) {
+  return (
+    <aside className="sidebar">
+      <div className="sidebar-logo">
+        <div className="logo-icon">
+          <i className="ti ti-layout-dashboard" />
+        </div>
+        <span>Business Hub</span>
+      </div>
+      <nav className="sidebar-nav">
+        {SECTIONS.map(s => (
+          <button
+            key={s.id}
+            className={`nav-item${section === s.id ? ' active' : ''}`}
+            onClick={() => setSection(s.id)}
+          >
+            <i className={`ti ${s.icon}`} />
+            {s.label}
+          </button>
+        ))}
+      </nav>
+      <div className="sidebar-footer">Dati salvati in locale</div>
+    </aside>
+  );
+}
+
+====================================================================
+FILE: components\Social.tsx
+====================================================================
+
+"use client";
+import React, { useState } from 'react';
+import Modal from './Modal';
+import { Post, Cliente } from '@/types';
+import { today, uid, fmtDate } from '@/lib/utils';
+
+interface SocialProps {
+  post: Post[];
+  setPost: (p: Post[]) => void;
+  clienti: Cliente[];
+  toast: (msg: string) => void;
+}
+
+const PLAT_ICON: Record<string, string> = {
+  linkedin: 'ti-brand-linkedin',
+  instagram: 'ti-brand-instagram',
+  facebook: 'ti-brand-facebook',
+};
+const PLAT_COLOR: Record<string, string> = {
+  linkedin: '#0a66c2',
+  instagram: '#e1306c',
+  facebook: '#1877f2',
+};
+
+export default function Social({ post, setPost, clienti, toast }: SocialProps) {
+  const [filtro, setFiltro] = useState('tutti');
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState<Partial<Post>>({});
+
+  const save = () => {
+    if (!form.titolo) {
+      alert('Inserisci il titolo');
+      return;
+    }
+    const nuovo: Post = {
+      id: uid(),
+      titolo: form.titolo,
+      contenuto: form.contenuto,
+      piattaforma: form.piattaforma || 'linkedin',
+      stato: form.stato || 'bozza',
+      data: form.data || today(),
+      clienteId: form.clienteId,
+    };
+    setPost([...post, nuovo]);
+    setShowModal(false);
+    setForm({});
+    toast('Post salvato');
+  };
+
+  const update = (id: string, changes: Partial<Post>) =>
+    setPost(post.map(p => (p.id === id ? { ...p, ...changes } : p)));
+
+  const del = (id: string) => {
+    if (confirm('Eliminare questo post?')) {
+      setPost(post.filter(p => p.id !== id));
+      toast('Eliminato');
+    }
+  };
+
+  const lista = filtro === 'tutti' ? post : post.filter(p => p.piattaforma === filtro);
+
+  const stats = (['linkedin', 'instagram', 'facebook'] as const).map(p => ({
+    p,
+    tot: post.filter(x => x.piattaforma === p).length,
+    pub: post.filter(x => x.piattaforma === p && x.stato === 'pubblicato').length,
+  }));
+
+  return (
+    <div>
+      <div className="section-header">
+        <h2>Social & Content</h2>
+        <button
+          className="btn primary"
+          onClick={() => {
+            setForm({ data: today() });
+            setShowModal(true);
+          }}
+        >
+          <i className="ti ti-plus" />Nuovo post
+        </button>
+      </div>
+
+      <div className="metrics" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 20 }}>
+        {stats.map(s => (
+          <div className="metric" key={s.p}>
+            <div className="metric-label" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <i className={`ti ${PLAT_ICON[s.p]}`} />
+              {s.p}
+            </div>
+            <div className="metric-value c-blue">{s.tot}</div>
+            <div className="metric-sub">{s.pub} pubblicati</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="chips">
+          {['tutti', 'linkedin', 'instagram', 'facebook'].map(f => (
+            <button key={f} className={`chip${filtro === f ? ' active' : ''}`} onClick={() => setFiltro(f)}>
+              {f !== 'tutti' && <i className={`ti ${PLAT_ICON[f]}`} />}
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="post-grid">
+        {lista.length ? (
+          [...lista].reverse().map(p => (
+            <div className="post-card" key={p.id}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="platform-badge" style={{ color: PLAT_COLOR[p.piattaforma] }}>
+                  <i className={`ti ${PLAT_ICON[p.piattaforma]}`} />
+                  {p.piattaforma}
+                </div>
+                <button className="btn sm danger ghost" onClick={() => del(p.id)}>
+                  <i className="ti ti-trash" />
+                </button>
+              </div>
+              <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.3 }}>{p.titolo}</div>
+              {p.contenuto && (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--text2)',
+                    overflow: 'hidden',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: 'vertical',
+                  }}
+                >
+                  {p.contenuto}
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+                <span style={{ fontSize: 11, color: 'var(--text3)' }}>{fmtDate(p.data)}</span>
+                <select
+                  value={p.stato}
+                  onChange={e => update(p.id, { stato: e.target.value as Post['stato'] })}
+                  style={{ fontSize: 11, padding: '3px 6px' }}
+                >
+                  <option value="bozza">Bozza</option>
+                  <option value="programmato">Programmato</option>
+                  <option value="pubblicato">Pubblicato</option>
+                </select>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="empty" style={{ gridColumn: '1/-1' }}>
+            <i className="ti ti-photo" />
+            <p>Nessun post</p>
+          </div>
+        )}
+      </div>
+
+      {showModal && (
+        <Modal
+          title="Nuovo post"
+          onClose={() => setShowModal(false)}
+          footer={
+            <>
+              <button className="btn" onClick={() => setShowModal(false)}>
+                Annulla
+              </button>
+              <button className="btn primary" onClick={save}>
+                <i className="ti ti-check" />Salva
+              </button>
+            </>
+          }
+        >
+          <div className="form-grid">
+            <div className="form-group">
+              <label>Piattaforma</label>
+              <select
+                value={form.piattaforma || 'linkedin'}
+                onChange={e => setForm({ ...form, piattaforma: e.target.value as Post['piattaforma'] })}
+              >
+                <option value="linkedin">LinkedIn</option>
+                <option value="instagram">Instagram</option>
+                <option value="facebook">Facebook</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Data pubblicazione</label>
+              <input type="date" value={form.data || ''} onChange={e => setForm({ ...form, data: e.target.value })} />
+            </div>
+            <div className="form-group full">
+              <label>Titolo / topic *</label>
+              <input
+                type="text"
+                placeholder="Es. Come aumentare l'engagement organico"
+                value={form.titolo || ''}
+                onChange={e => setForm({ ...form, titolo: e.target.value })}
+              />
+            </div>
+            <div className="form-group full">
+              <label>Contenuto / bozza</label>
+              <textarea
+                placeholder="Testo del post, hashtag, CTA..."
+                value={form.contenuto || ''}
+                onChange={e => setForm({ ...form, contenuto: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>Stato</label>
+              <select
+                value={form.stato || 'bozza'}
+                onChange={e => setForm({ ...form, stato: e.target.value as Post['stato'] })}
+              >
+                <option value="bozza">Bozza</option>
+                <option value="programmato">Programmato</option>
+                <option value="pubblicato">Pubblicato</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Cliente collegato</label>
+              <select value={form.clienteId || ''} onChange={e => setForm({ ...form, clienteId: e.target.value })}>
+                <option value="">â€” nessuno â€”</option>
+                {clienti.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+====================================================================
+FILE: components\Toast.tsx
+====================================================================
+
+"use client";
+import React, { useEffect } from 'react';
+
+interface ToastProps {
+  msg: string;
+  onDone: () => void;
+}
+
+export default function Toast({ msg, onDone }: ToastProps) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 2500);
+    return () => clearTimeout(t);
+  }, [onDone]);
+
+  return (
+    <div className="toast">
+      <i className="ti ti-check" /> {msg}
+    </div>
+  );
+}
+
+====================================================================
+FILE: components\Topbar.tsx
+====================================================================
+
+"use client";
+import React from 'react';
+import { Section } from '@/types';
+
+const TITOLI: Record<Section, string> = {
+  dashboard: 'Dashboard',
+  finanze: 'Finanze',
+  clienti: 'Clienti',
+  roadmap: 'Roadmap',
+  social: 'Social & Content',
+};
+
+interface TopbarProps {
+  section: Section;
+}
+
+export default function Topbar({ section }: TopbarProps) {
+  return (
+    <div className="topbar">
+      <span className="topbar-title">{TITOLI[section]}</span>
+      <div className="topbar-right">
+        <span className="date-badge">
+          {new Date().toLocaleDateString('it-IT', {
+            weekday: 'short',
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          })}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+====================================================================
+FILE: hooks\useLocalStorage.ts
+====================================================================
+
+"use client";
+import { useState, useCallback } from 'react';
+
+export function useLocalStorage<T>(key: string, def: T): [T, (v: T) => void] {
+  const [val, setVal] = useState<T>(() => {
+    if (typeof window === 'undefined') return def;
+    try {
+      const s = localStorage.getItem(key);
+      return s ? (JSON.parse(s) as T) : def;
+    } catch {
+      return def;
+    }
+  });
+
+  const setStored = useCallback((v: T) => {
+    setVal(v);
+    try {
+      localStorage.setItem(key, JSON.stringify(v));
+    } catch {
+      // storage non disponibile (es. modalitÃ  privata): ignora silenziosamente
+    }
+  }, [key]);
+
+  return [val, setStored];
+}
+
+====================================================================
+FILE: lib\utils.ts
+====================================================================
+
+export const MESI = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+
+export const fmt = (n: number): string =>
+  new Intl.NumberFormat('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+
+export const fmtDate = (d?: string): string =>
+  d ? new Date(d + 'T00:00:00').toLocaleDateString('it-IT') : 'â€”';
+
+export const today = (): string => new Date().toISOString().split('T')[0];
+
+export const uid = (): string => Date.now().toString(36) + Math.random().toString(36).slice(2);
+
+export const initials = (name: string): string =>
+  name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+
+export const daysDiff = (dateStr?: string): number | null => {
+  if (!dateStr) return null;
+  return Math.ceil((new Date(dateStr + 'T00:00:00').getTime() - new Date().getTime()) / 86400000);
+};
+
+====================================================================
+FILE: types\index.ts
+====================================================================
+
+export type Section = 'dashboard' | 'finanze' | 'clienti' | 'roadmap' | 'social';
+
+export interface Movimento {
+  id: string;
+  tipo: 'entrata' | 'uscita';
+  importo: number;
+  desc: string;
+  data: string;
+  cat: string;
+  clienteId?: string;
+}
+
+export interface Cliente {
+  id: string;
+  nome: string;
+  email?: string;
+  tel?: string;
+  tipo: 'social' | 'sito' | 'software' | 'altro';
+  stato: 'attivo' | 'potenziale' | 'sospeso' | 'concluso';
+  linkedin?: string;
+  note?: string;
+}
+
+export interface RoadmapItem {
+  id: string;
+  nome: string;
+  clienteId?: string;
+  inizio?: string;
+  fine?: string;
+  stato: 'pianificato' | 'in corso' | 'revisione' | 'completato';
+  progress: number;
+  note?: string;
+}
+
+export interface Post {
+  id: string;
+  titolo: string;
+  contenuto?: string;
+  piattaforma: 'linkedin' | 'instagram' | 'facebook';
+  stato: 'bozza' | 'programmato' | 'pubblicato';
+  data: string;
+  clienteId?: string;
+}
