@@ -1,7 +1,7 @@
 "use client";
 import React from 'react';
 import { Movimento, Cliente, Appuntamento, ProdottoMagazzino } from '@/types';
-import { fmt, fmtDate, MESI } from '@/lib/utils';
+import { fmt, MESI } from '@/lib/utils';
 
 interface DashboardProps {
   movimenti: Movimento[];
