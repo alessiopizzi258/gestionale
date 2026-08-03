@@ -8,32 +8,35 @@
     "start": "next start",
     "lint": "next lint",
     "electron:dev": "concurrently \"next dev\" \"wait-on http://localhost:3000 && electron .\"",
-  "electron:build": "next build && electron-builder"
+    "electron:build": "next build && electron-builder"
   },
   "dependencies": {
+    "firebase": "^12.17.0",
     "next": "14.2.35",
     "react": "^18",
     "react-dom": "^18"
   },
   "main": "electron/main.js",
-"build": {
-  "appId": "com.tuonome.businesshub",
-  "productName": "Business Hub",
-  "win": { "target": "nsis" },
-  "files": [
-    "electron/**",
-    ".next/**",
-    "public/**",
-    "node_modules/**",
-    "package.json",
-    "next.config.*",
-    "app/**",
-    "components/**",
-    "hooks/**",
-    "lib/**",
-    "types/**"
-  ]
-},
+  "build": {
+    "appId": "com.tuonome.businesshub",
+    "productName": "Business Hub",
+    "win": {
+      "target": "nsis"
+    },
+    "files": [
+      "electron/**",
+      ".next/**",
+      "public/**",
+      "node_modules/**",
+      "package.json",
+      "next.config.*",
+      "app/**",
+      "components/**",
+      "hooks/**",
+      "lib/**",
+      "types/**"
+    ]
+  },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^18",

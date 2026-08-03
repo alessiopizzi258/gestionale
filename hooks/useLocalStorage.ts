@@ -1,32 +1,39 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export function useLocalStorage<T>(key: string, def: T): [T, (v: T) => void] {
   const [val, setVal] = useState<T>(def);
-  const [isLoaded, setIsLoaded] = useState(false);
 
-  // Carica i dati da localStorage appena il componente monta sul client
+  // Carica i dati da Firebase Firestore all'avvio
   useEffect(() => {
-    try {
-      const item = window.localStorage.getItem(key);
-      if (item) {
-        setVal(JSON.parse(item));
+    async function fetchData() {
+      try {
+        const docRef = doc(db, 'beauty_hub_data', key);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data && data.value !== undefined) {
+            setVal(data.value as T);
+          }
+        }
+      } catch (err) {
+        console.error('Errore caricamento Firebase:', err);
       }
-    } catch (error) {
-      console.error(`Errore nel caricamento di ${key} da localStorage:`, error);
-    } finally {
-      setIsLoaded(true);
     }
+    fetchData();
   }, [key]);
 
-  const setStored = useCallback((v: T) => {
+  // Salva i dati su Firebase Firestore in tempo reale
+  const setStored = useCallback(async (v: T) => {
+    setVal(v);
     try {
-      setVal(v);
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(key, JSON.stringify(v));
-      }
-    } catch (error) {
-      console.error(`Errore nel salvataggio di ${key} su localStorage:`, error);
+      const docRef = doc(db, 'beauty_hub_data', key);
+      await setDoc(docRef, { value: v });
+    } catch (err) {
+      console.error('Errore salvataggio Firebase:', err);
     }
   }, [key]);
 
