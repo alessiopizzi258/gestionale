@@ -1,23 +1,32 @@
 "use client";
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export function useLocalStorage<T>(key: string, def: T): [T, (v: T) => void] {
-  const [val, setVal] = useState<T>(() => {
-    if (typeof window === 'undefined') return def;
+  const [val, setVal] = useState<T>(def);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Carica i dati da localStorage appena il componente monta sul client
+  useEffect(() => {
     try {
-      const s = localStorage.getItem(key);
-      return s ? (JSON.parse(s) as T) : def;
-    } catch {
-      return def;
+      const item = window.localStorage.getItem(key);
+      if (item) {
+        setVal(JSON.parse(item));
+      }
+    } catch (error) {
+      console.error(`Errore nel caricamento di ${key} da localStorage:`, error);
+    } finally {
+      setIsLoaded(true);
     }
-  });
+  }, [key]);
 
   const setStored = useCallback((v: T) => {
-    setVal(v);
     try {
-      localStorage.setItem(key, JSON.stringify(v));
-    } catch {
-      // storage non disponibile (es. modalità privata): ignora silenziosamente
+      setVal(v);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(key, JSON.stringify(v));
+      }
+    } catch (error) {
+      console.error(`Errore nel salvataggio di ${key} su localStorage:`, error);
     }
   }, [key]);
 

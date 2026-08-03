@@ -6,7 +6,7 @@ import Modal from '@/components/Modal';
 import Toast from '@/components/Toast';
 import { Appuntamento, Cliente } from '@/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { today, uid } from '@/lib/utils';
+import { today, uid, MESI } from '@/lib/utils';
 
 const STATO_COLOR: Record<string, string> = {
   attesa: 'yellow',
@@ -30,7 +30,12 @@ export default function JennyPage() {
 
   const [appuntamenti, setAppuntamenti] = useLocalStorage<Appuntamento[]>('bh_appuntamenti', []);
   const [clienti] = useLocalStorage<Cliente[]>('bh_clienti', []);
-  const [filtroData, setFiltroData] = useState(today());
+  
+  // Stati del calendario
+  const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(() => new Date().getMonth());
+  const [selectedDay, setSelectedDay] = useState<string>(today());
+
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<Partial<Appuntamento>>({});
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -38,7 +43,35 @@ export default function JennyPage() {
 
   if (!authorized) return null;
 
-  const appuntamentiJenny = appuntamenti.filter(a => a.data === filtroData);
+  // Navigazione tra i mesi
+  const prevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear(y => y - 1);
+    } else {
+      setCurrentMonth(m => m - 1);
+    }
+  };
+
+  const nextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear(y => y + 1);
+    } else {
+      setCurrentMonth(m => m + 1);
+    }
+  };
+
+  const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+  const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
+  
+  let startDayIndex = firstDayOfMonth.getDay() - 1;
+  if (startDayIndex === -1) startDayIndex = 6; // Lunedì = 0
+
+  const totalDays = lastDayOfMonth.getDate();
+
+  // Filtra gli appuntamenti del giorno selezionato (mostriamo quelli di Jenny o generali)
+  const appuntamentiGiorno = appuntamenti.filter(a => a.data === selectedDay);
 
   const save = () => {
     if (!form.titolo || !form.ora) {
@@ -49,7 +82,7 @@ export default function JennyPage() {
       id: uid(),
       titolo: form.titolo,
       clienteId: form.clienteId,
-      data: form.data || filtroData,
+      data: form.data || selectedDay,
       ora: form.ora,
       durataMinuti: parseInt(String(form.durataMinuti)) || 60,
       stato: 'confermato',
@@ -74,90 +107,207 @@ export default function JennyPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '32px 16px' }}>
-      <div style={{ maxWidth: 900, margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, background: 'var(--card-bg)', padding: 20, borderRadius: 12, border: '1px solid var(--border)' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+        
+        {/* TOPBAR DI JENNY */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, background: 'var(--card-bg)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', flexWrap: 'wrap', gap: 12 }}>
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-display)' }}>Agenda di Jenny ✨</h1>
-            <p style={{ fontSize: 13, color: 'var(--text3)' }}>Gestione trattamenti e appuntamenti assegnati</p>
+            <p style={{ fontSize: 13, color: 'var(--text3)' }}>Calendario e gestione appuntamenti assegnati</p>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <input
-              type="date"
-              value={filtroData}
-              onChange={e => setFiltroData(e.target.value)}
-              style={{ padding: '6px 10px', fontSize: 13 }}
-            />
             <button
               className="btn primary"
               onClick={() => {
-                setForm({ data: filtroData, ora: '10:00', durataMinuti: 60, operatore: 'Jenny' });
+                setForm({ data: selectedDay, ora: '10:00', durataMinuti: 60, operatore: 'Jenny' });
                 setShowModal(true);
               }}
             >
-              <i className="ti ti-plus" /> Nuovo
+              <i className="ti ti-plus" /> Nuovo Appuntamento
             </button>
-            <button className="btn sm ghost" onClick={handleLogout}>
-              <i className="ti ti-logout" /> Esci
+            <button className="btn sm danger ghost" onClick={handleLogout} style={{ background: '#fff1f2', color: '#e11d48' }}>
+              <i className="ti ti-lock" /> Termina & Logout
             </button>
           </div>
         </div>
 
-        {appuntamentiJenny.length ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {appuntamentiJenny.map(a => {
-              const cl = clienti.find(c => c.id === a.clienteId);
-              return (
-                <div key={a.id} className="card" style={{ padding: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: 0 }}>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>
-                      {a.ora} — {a.titolo} <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text3)' }}>({a.durataMinuti} min)</span>
-                    </div>
-                    <div style={{ fontSize: 13, color: 'var(--text2)' }}>
-                      Cliente: <strong>{cl?.nome || 'Esterna'}</strong> {cl?.tel ? `• Tel: ${cl.tel}` : ''}
-                    </div>
-                    {a.note && <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic', marginTop: 4 }}>Note: {a.note}</div>}
-                  </div>
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                    <span className={`badge ${STATO_COLOR[a.stato] || 'gray'}`}>{a.stato}</span>
-                    <select
-                      value={a.stato}
-                      onChange={e => updateStato(a.id, e.target.value as Appuntamento['stato'])}
-                      style={{ fontSize: 12, padding: '4px 8px' }}
-                    >
-                      <option value="attesa">In attesa</option>
-                      <option value="confermato">Confermato</option>
-                      <option value="completato">Completato</option>
-                      <option value="cancellato">Cancellato</option>
-                    </select>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="card" style={{ textAlign: 'center', padding: '60px 0' }}>
-            <i className="ti ti-calendar-off" style={{ fontSize: 32, color: 'var(--text3)', marginBottom: 8 }} />
-            <p style={{ color: 'var(--text3)', fontSize: 13 }}>Nessun appuntamento in programma per questa data.</p>
-          </div>
-        )}
+        {/* LAYOUT A DUE COLONNE (CALENDARIO A SINISTRA + LISTA GIORNO A DESTRA) */}
+        <div className="two-col" style={{ alignItems: 'flex-start' }}>
+          
+          {/* GRIGLIA DEL CALENDARIO MENSILE */}
+          <div className="card" style={{ padding: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>
+                {MESI[currentMonth]} {currentYear}
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button className="btn sm ghost" onClick={prevMonth}>
+                  <i className="ti ti-chevron-left" />
+                </button>
+                <button className="btn sm ghost" onClick={() => {
+                  const now = new Date();
+                  setCurrentYear(now.getFullYear());
+                  setCurrentMonth(now.getMonth());
+                  setSelectedDay(today());
+                }}>
+                  Oggi
+                </button>
+                <button className="btn sm ghost" onClick={nextMonth}>
+                  <i className="ti ti-chevron-right" />
+                </button>
+              </div>
+            </div>
 
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, textAlign: 'center', marginBottom: 8 }}>
+              {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(d => (
+                <div key={d} style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)' }}>{d}</div>
+              ))}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+              {Array.from({ length: startDayIndex }).map((_, i) => (
+                <div key={`empty-${i}`} />
+              ))}
+
+              {Array.from({ length: totalDays }).map((_, i) => {
+                const dayNum = i + 1;
+                const formattedMonth = String(currentMonth + 1).padStart(2, '0');
+                const formattedDay = String(dayNum).padStart(2, '0');
+                const dateStr = `${currentYear}-${formattedMonth}-${formattedDay}`;
+                
+                const isSelected = selectedDay === dateStr;
+                const isToday = today() === dateStr;
+                const hasAppts = appuntamenti.some(a => a.data === dateStr);
+
+                return (
+                  <button
+                    key={dateStr}
+                    onClick={() => setSelectedDay(dateStr)}
+                    style={{
+                      aspectRatio: '1',
+                      borderRadius: 8,
+                      border: isSelected ? '2px solid var(--accent)' : '1px solid var(--border)',
+                      background: isSelected ? 'var(--accent-light)' : isToday ? 'var(--bg-subtle)' : 'transparent',
+                      color: isSelected ? 'var(--accent)' : 'var(--text)',
+                      fontWeight: isToday || isSelected ? 700 : 400,
+                      fontSize: 13,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      transition: 'all 0.1s ease',
+                    }}
+                  >
+                    {dayNum}
+                    {hasAppts && (
+                      <span
+                        style={{
+                          width: 5,
+                          height: 5,
+                          borderRadius: '50%',
+                          background: isSelected ? 'var(--accent)' : 'var(--green)',
+                          marginTop: 3,
+                        }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* LISTA APPUNTAMENTI DEL GIORNO SELEZIONATO */}
+          <div className="card" style={{ padding: 16 }}>
+            <div className="card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span><i className="ti ti-calendar-event" /> Appuntamenti del {selectedDay.split('-').reverse().join('/')}</span>
+              <button
+                className="btn sm primary ghost"
+                onClick={() => {
+                  setForm({ data: selectedDay, ora: '10:00', durataMinuti: 60, operatore: 'Jenny' });
+                  setShowModal(true);
+                }}
+              >
+                <i className="ti ti-plus" /> Aggiungi
+              </button>
+            </div>
+
+            {appuntamentiGiorno.length ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+                {appuntamentiGiorno.map(a => {
+                  const cl = clienti.find(c => c.id === a.clienteId);
+                  return (
+                    <div
+                      key={a.id}
+                      style={{
+                        padding: 12,
+                        borderRadius: 8,
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg-subtle)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700 }}>
+                            {a.ora} · {a.titolo}
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--text2)' }}>
+                            <i className="ti ti-user" /> {cl?.nome || 'Cliente esterno'} {cl?.tel ? `(${cl.tel})` : ''}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
+                            Durata: {a.durataMinuti} min · Operatore: <strong>{a.operatore}</strong>
+                          </div>
+                        </div>
+                        <span className={`badge ${STATO_COLOR[a.stato] || 'gray'}`}>{a.stato}</span>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+                        <select
+                          value={a.stato}
+                          onChange={e => updateStato(a.id, e.target.value as Appuntamento['stato'])}
+                          style={{ fontSize: 11, padding: '3px 6px' }}
+                        >
+                          <option value="attesa">In attesa</option>
+                          <option value="confermato">Confermato</option>
+                          <option value="completato">Completato</option>
+                          <option value="cancellato">Cancellato</option>
+                        </select>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="empty" style={{ padding: '40px 0' }}>
+                <i className="ti ti-calendar-off" />
+                <p>Nessun appuntamento per questo giorno</p>
+              </div>
+            )}
+          </div>
+
+        </div>
+
+        {/* MODALE NUOVO APPUNTAMENTO */}
         {showModal && (
           <Modal
-            title="Nuovo Appuntamento (Jenny)"
+            title={`Nuovo Appuntamento (${selectedDay.split('-').reverse().join('/')})`}
             onClose={() => setShowModal(false)}
             footer={
               <>
                 <button className="btn" onClick={() => setShowModal(false)}>Annulla</button>
-                <button className="btn primary" onClick={save}>Salva</button>
+                <button className="btn primary" onClick={save}>
+                  <i className="ti ti-check" />Salva
+                </button>
               </>
             }
           >
             <div className="form-grid">
               <div className="form-group full">
-                <label>Trattamento *</label>
+                <label>Trattamento / Servizio *</label>
                 <input
                   type="text"
-                  placeholder="Es. Pulizia Viso"
+                  placeholder="Es. Pulizia Viso profonda"
                   value={form.titolo || ''}
                   onChange={e => setForm({ ...form, titolo: e.target.value })}
                 />
@@ -172,6 +322,10 @@ export default function JennyPage() {
                 </select>
               </div>
               <div className="form-group">
+                <label>Data</label>
+                <input type="date" value={form.data || selectedDay} onChange={e => setForm({ ...form, data: e.target.value })} />
+              </div>
+              <div className="form-group">
                 <label>Orario</label>
                 <input type="time" value={form.ora || ''} onChange={e => setForm({ ...form, ora: e.target.value })} />
               </div>
@@ -183,13 +337,27 @@ export default function JennyPage() {
                   onChange={e => setForm({ ...form, durataMinuti: parseInt(e.target.value) || 60 })}
                 />
               </div>
+              <div className="form-group">
+                <label>Operatore</label>
+                <input
+                  type="text"
+                  value="Jenny"
+                  disabled
+                  style={{ background: 'var(--bg-subtle)', color: 'var(--text3)' }}
+                />
+              </div>
               <div className="form-group full">
-                <label>Note</label>
-                <textarea value={form.note || ''} onChange={e => setForm({ ...form, note: e.target.value })} />
+                <label>Note aggiuntive</label>
+                <textarea
+                  placeholder="Note sul trattamento..."
+                  value={form.note || ''}
+                  onChange={e => setForm({ ...form, note: e.target.value })}
+                />
               </div>
             </div>
           </Modal>
         )}
+
       </div>
       {toastMsg && <Toast msg={toastMsg} onDone={() => setToastMsg(null)} />}
     </div>
@@ -245,12 +413,7 @@ export default function TitolarePage() {
     <div className="layout">
       <Sidebar section={section} setSection={setSection} />
       <main className="main">
-        <Topbar section={section} />
-        <div style={{ position: 'absolute', top: 16, right: 24, zIndex: 60 }}>
-          <button className="btn sm ghost" onClick={handleLogout}>
-            <i className="ti ti-logout" /> Blocca / Logout
-          </button>
-        </div>
+        <Topbar section={section} onLogout={handleLogout} />
         <div className="page">
           {section === 'dashboard' && <Dashboard movimenti={movimenti} clienti={clienti} appuntamenti={appuntamenti} magazzino={magazzino} />}
           {section === 'finanze' && <Finanze movimenti={movimenti} setMovimenti={setMovimenti} clienti={clienti} toast={toast} />}
@@ -295,7 +458,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 --- FILE: \app\page.tsx ---
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
@@ -303,10 +466,7 @@ export default function LoginPage() {
   const [inputVal, setInputVal] = useState('');
   const [error, setError] = useState(false);
 
-  // ID univoco del Tag NFC di Jenny
   const NFC_ID_JENNY = "04:F3:22:63:35:02:89"; 
-
-  // PIN di sicurezza
   const PIN_TITOLARE = "1978";
   const PIN_JENNY = "2026";
 
@@ -331,26 +491,44 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div className="card" style={{ maxWidth: 400, width: '100%', padding: 32, textAlign: 'center' }}>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>✨</div>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 6 }}>Beauty Hub</h1>
-        <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 24 }}>Appoggia il Tag di Jenny sul lettore o inserisci il PIN</p>
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #fffcfd 0%, #fff1f4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div className="card" style={{ maxWidth: 420, width: '100%', padding: 40, textAlign: 'center', boxShadow: '0 10px 25px -5px rgba(219, 39, 119, 0.08)', border: '1px solid #fce7ec', borderRadius: 20 }}>
+        
+        <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#fff1f4', color: '#db2777', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, margin: '0 auto 20px auto', boxShadow: '0 0 0 8px #fdf2f8' }}>
+          ✨
+        </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <input
-            type="password"
-            placeholder="Tag NFC o PIN..."
-            value={inputVal}
-            onChange={e => setInputVal(e.target.value)}
-            autoFocus
-            style={{ textAlign: 'center', fontSize: 16, padding: 12 }}
-          />
-          {error && <div style={{ fontSize: 12, color: 'var(--red)', fontWeight: 600 }}>Codice non riconosciuto. Riprova.</div>}
-          <button type="submit" className="btn primary" style={{ width: '100%', justifyContent: 'center', padding: 12 }}>
-            Conferma Accesso
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: '#3b2e35', marginBottom: 6 }}>Beauty Hub</h1>
+        <p style={{ fontSize: 13, color: '#9b8491', marginBottom: 32, lineHeight: 1.5 }}>
+          Gestionale Estetico & Agenda Professionale.<br />Scansiona il Tag NFC o digita il PIN.
+        </p>
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ position: 'relative' }}>
+            <input
+              type="password"
+              placeholder="••••••••"
+              value={inputVal}
+              onChange={e => setInputVal(e.target.value)}
+              autoFocus
+              style={{ textAlign: 'center', fontSize: 18, letterSpacing: '4px', padding: '14px', borderRadius: 12, border: '1px solid #fce7ec', background: '#ffffff', color: '#3b2e35', width: '100%' }}
+            />
+          </div>
+
+          {error && (
+            <div style={{ fontSize: 12, color: '#e11d48', fontWeight: 600, background: '#fff1f2', padding: '8px', borderRadius: 8 }}>
+              ⚠️ Codice non riconosciuto o Tag non valido.
+            </div>
+          )}
+
+          <button type="submit" className="btn primary" style={{ width: '100%', justifyContent: 'center', padding: 14, fontSize: 14, borderRadius: 12, fontWeight: 600 }}>
+            Accedi al Sistema
           </button>
         </form>
+
+        <div style={{ marginTop: 28, fontSize: 11, color: '#9b8491', borderTop: '1px solid #fce7ec', paddingTop: 16 }}>
+          Area protetta a doppio livello (Titolare / Operatore)
+        </div>
       </div>
     </div>
   );
@@ -358,13 +536,644 @@ export default function LoginPage() {
 
 
 --- FILE: \components\Agenda.tsx ---
+"use client";
+import React, { useState } from 'react';
+import Modal from './Modal';
+import { Appuntamento, Cliente } from '@/types';
+import { today, uid, MESI } from '@/lib/utils';
+
+interface AgendaProps {
+  appuntamenti: Appuntamento[];
+  setAppuntamenti: (a: Appuntamento[]) => void;
+  clienti: Cliente[];
+  toast: (msg: string) => void;
+}
+
+const STATO_COLOR: Record<string, string> = {
+  attesa: 'yellow',
+  confermato: 'blue',
+  completato: 'green',
+  cancellato: 'red',
+};
+
+export default function Agenda({ appuntamenti, setAppuntamenti, clienti, toast }: AgendaProps) {
+  const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(() => new Date().getMonth());
+  const [selectedDay, setSelectedDay] = useState<string>(today());
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState<Partial<Appuntamento>>({});
+
+  const prevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear(y => y - 1);
+    } else {
+      setCurrentMonth(m => m - 1);
+    }
+  };
+
+  const nextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear(y => y + 1);
+    } else {
+      setCurrentMonth(m => m + 1);
+    }
+  };
+
+  const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+  const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
+  
+  let startDayIndex = firstDayOfMonth.getDay() - 1;
+  if (startDayIndex === -1) startDayIndex = 6;
+
+  const totalDays = lastDayOfMonth.getDate();
+
+  const save = () => {
+    if (!form.titolo || !form.ora) {
+      alert('Inserisci trattamento e orario');
+      return;
+    }
+    const nuovo: Appuntamento = {
+      id: uid(),
+      titolo: form.titolo,
+      clienteId: form.clienteId,
+      data: form.data || selectedDay,
+      ora: form.ora,
+      durataMinuti: parseInt(String(form.durataMinuti)) || 60,
+      stato: form.stato || 'confermato',
+      operatore: form.operatore || 'Staff',
+      note: form.note,
+    };
+    setAppuntamenti([...appuntamenti, nuovo]);
+    setShowModal(false);
+    setForm({});
+    toast('Appuntamento aggiunto in agenda');
+  };
+
+  const update = (id: string, changes: Partial<Appuntamento>) =>
+    setAppuntamenti(appuntamenti.map(a => (a.id === id ? { ...a, ...changes } : a)));
+
+  const del = (id: string) => {
+    if (confirm('Cancellare questo appuntamento?')) {
+      setAppuntamenti(appuntamenti.filter(a => a.id !== id));
+      toast('Eliminato');
+    }
+  };
+
+  const appuntamentiGiorno = appuntamenti.filter(a => a.data === selectedDay);
+
+  return (
+    <div>
+      <div className="section-header">
+        <h2>Agenda & Calendario</h2>
+        <button
+          className="btn primary"
+          onClick={() => {
+            setForm({ data: selectedDay, ora: '10:00', durataMinuti: 60, operatore: 'Staff' });
+            setShowModal(true);
+          }}
+        >
+          <i className="ti ti-plus" /> Nuovo Appuntamento
+        </button>
+      </div>
+
+      <div className="two-col" style={{ alignItems: 'flex-start' }}>
+        {/* GRIGLIA CALENDARIO */}
+        <div className="card" style={{ padding: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>
+              {MESI[currentMonth]} {currentYear}
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button className="btn sm ghost" onClick={prevMonth}>
+                <i className="ti ti-chevron-left" />
+              </button>
+              <button className="btn sm ghost" onClick={() => {
+                const now = new Date();
+                setCurrentYear(now.getFullYear());
+                setCurrentMonth(now.getMonth());
+                setSelectedDay(today());
+              }}>
+                Oggi
+              </button>
+              <button className="btn sm ghost" onClick={nextMonth}>
+                <i className="ti ti-chevron-right" />
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, textAlign: 'center', marginBottom: 8 }}>
+            {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(d => (
+              <div key={d} style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)' }}>{d}</div>
+            ))}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+            {Array.from({ length: startDayIndex }).map((_, i) => (
+              <div key={`empty-${i}`} />
+            ))}
+
+            {Array.from({ length: totalDays }).map((_, i) => {
+              const dayNum = i + 1;
+              const formattedMonth = String(currentMonth + 1).padStart(2, '0');
+              const formattedDay = String(dayNum).padStart(2, '0');
+              const dateStr = `${currentYear}-${formattedMonth}-${formattedDay}`;
+              
+              const isSelected = selectedDay === dateStr;
+              const isToday = today() === dateStr;
+              const hasAppts = appuntamenti.some(a => a.data === dateStr);
+
+              return (
+                <button
+                  key={dateStr}
+                  onClick={() => setSelectedDay(dateStr)}
+                  style={{
+                    aspectRatio: '1',
+                    borderRadius: 8,
+                    border: isSelected ? '2px solid var(--accent)' : '1px solid var(--border)',
+                    background: isSelected ? 'var(--accent-light)' : isToday ? 'var(--bg-subtle)' : 'transparent',
+                    color: isSelected ? 'var(--accent)' : 'var(--text)',
+                    fontWeight: isToday || isSelected ? 700 : 400,
+                    fontSize: 13,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    transition: 'all 0.1s ease',
+                  }}
+                >
+                  {dayNum}
+                  {hasAppts && (
+                    <span
+                      style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: '50%',
+                        background: isSelected ? 'var(--accent)' : 'var(--green)',
+                        marginTop: 3,
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* LISTA APPUNTAMENTI DEL GIORNO */}
+        <div className="card" style={{ padding: 16 }}>
+          <div className="card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span><i className="ti ti-calendar-event" /> Appuntamenti del {selectedDay.split('-').reverse().join('/')}</span>
+            <button
+              className="btn sm primary ghost"
+              onClick={() => {
+                setForm({ data: selectedDay, ora: '10:00', durataMinuti: 60, operatore: 'Staff' });
+                setShowModal(true);
+              }}
+            >
+              <i className="ti ti-plus" /> Aggiungi
+            </button>
+          </div>
+
+          {appuntamentiGiorno.length ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+              {appuntamentiGiorno.map(a => {
+                const cl = clienti.find(c => c.id === a.clienteId);
+                return (
+                  <div
+                    key={a.id}
+                    style={{
+                      padding: 12,
+                      borderRadius: 8,
+                      border: '1px solid var(--border)',
+                      background: 'var(--bg-subtle)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700 }}>
+                          {a.ora} · {a.titolo}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text2)' }}>
+                          <i className="ti ti-user" /> {cl?.nome || 'Cliente esterno'} {cl?.tel ? `(${cl.tel})` : ''}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
+                          Durata: {a.durataMinuti} min · Operatore: <strong>{a.operatore}</strong>
+                        </div>
+                      </div>
+                      <span className={`badge ${STATO_COLOR[a.stato] || 'gray'}`}>{a.stato}</span>
+                    </div>
+
+                    {/* Azioni rapide dinamiche per promemoria WhatsApp ed Email */}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                      {cl?.tel && (
+                        <a
+                          href={`https://wa.me/${cl.tel.replace(/[^0-9+]/g, '')}?text=${encodeURIComponent(
+                            `Ciao ${cl.nome}, ti confermo il tuo appuntamento per "${a.titolo}" il giorno ${a.data.split('-').reverse().join('/')} alle ore ${a.ora}. Ti aspettiamo in Beauty Hub!`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn sm"
+                          style={{ background: '#25d366', color: '#fff', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                        >
+                          <i className="ti ti-brand-whatsapp" /> WhatsApp
+                        </a>
+                      )}
+
+                      {cl?.email && (
+                        <a
+                          href={`mailto:${cl.email}?subject=${encodeURIComponent('Conferma Appuntamento - Beauty Hub')}&body=${encodeURIComponent(
+                            `Gentile ${cl.nome},\n\nLe confermo il suo appuntamento per il trattamento "${a.titolo}" previsto per il ${a.data.split('-').reverse().join('/')} alle ore ${a.ora}.\n\nCordiali saluti,\nBeauty Hub`
+                          )}`}
+                          className="btn sm"
+                          style={{ background: 'var(--bg-subtle)', color: 'var(--text)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                        >
+                          <i className="ti ti-mail" /> Email
+                        </a>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+                      <select
+                        value={a.stato}
+                        onChange={e => update(a.id, { stato: e.target.value as Appuntamento['stato'] })}
+                        style={{ fontSize: 11, padding: '3px 6px' }}
+                      >
+                        <option value="attesa">In attesa</option>
+                        <option value="confermato">Confermato</option>
+                        <option value="completato">Completato</option>
+                        <option value="cancellato">Cancellato</option>
+                      </select>
+                      <button className="btn sm danger ghost" onClick={() => del(a.id)}>
+                        <i className="ti ti-trash" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="empty" style={{ padding: '40px 0' }}>
+              <i className="ti ti-calendar-off" />
+              <p>Nessun appuntamento per questo giorno</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {showModal && (
+        <Modal
+          title={`Nuovo Appuntamento (${selectedDay.split('-').reverse().join('/')})`}
+          onClose={() => setShowModal(false)}
+          footer={
+            <>
+              <button className="btn" onClick={() => setShowModal(false)}>Annulla</button>
+              <button className="btn primary" onClick={save}>
+                <i className="ti ti-check" />Salva
+              </button>
+            </>
+          }
+        >
+          <div className="form-grid">
+            <div className="form-group full">
+              <label>Trattamento / Servizio *</label>
+              <input
+                type="text"
+                placeholder="Es. Pulizia Viso profonda + Maschera"
+                value={form.titolo || ''}
+                onChange={e => setForm({ ...form, titolo: e.target.value })}
+              />
+            </div>
+            <div className="form-group full">
+              <label>Cliente</label>
+              <select value={form.clienteId || ''} onChange={e => setForm({ ...form, clienteId: e.target.value })}>
+                <option value="">— seleziona cliente —</option>
+                {clienti.map(c => (
+                  <option key={c.id} value={c.id}>{c.nome}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Data</label>
+              <input type="date" value={form.data || selectedDay} onChange={e => setForm({ ...form, data: e.target.value })} />
+            </div>
+            <div className="form-group">
+              <label>Orario</label>
+              <input type="time" value={form.ora || ''} onChange={e => setForm({ ...form, ora: e.target.value })} />
+            </div>
+            <div className="form-group">
+              <label>Durata (minuti)</label>
+              <input
+                type="number"
+                value={form.durataMinuti || 60}
+                onChange={e => setForm({ ...form, durataMinuti: parseInt(e.target.value) || 0 })}
+              />
+            </div>
+            <div className="form-group">
+              <label>Operatore / Cabina</label>
+              <input
+                type="text"
+                placeholder="Es. Martina / Cabina 1"
+                value={form.operatore || ''}
+                onChange={e => setForm({ ...form, operatore: e.target.value })}
+              />
+            </div>
+            <div className="form-group full">
+              <label>Note aggiuntive</label>
+              <textarea
+                placeholder="Richieste particolari, intolleranze, ecc."
+                value={form.note || ''}
+                onChange={e => setForm({ ...form, note: e.target.value })}
+              />
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+
+--- FILE: \components\Clienti.tsx ---
+"use client";
+import React, { useState } from 'react';
+import Modal from './Modal';
+import { Cliente, Movimento } from '@/types';
+import { fmt, initials, uid } from '@/lib/utils';
+
+interface ClientiProps {
+  clienti: Cliente[];
+  setClienti: (c: Cliente[]) => void;
+  movimenti: Movimento[];
+  toast: (msg: string) => void;
+}
+
+const TIPO_ICON: Record<string, string> = {
+  viso: 'ti-sparkles',
+  corpo: 'ti-activity',
+  epilazione: 'ti-wand',
+  altro: 'ti-user',
+};
+
+const STATO_BADGE: Record<string, string> = {
+  attivo: 'green',
+  nuovo: 'blue',
+  vip: 'purple',
+  inattivo: 'gray',
+};
+
+export default function Clienti({ clienti, setClienti, movimenti, toast }: ClientiProps) {
+  const [filtro, setFiltro] = useState('tutti');
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState<Partial<Cliente>>({});
+  const [search, setSearch] = useState('');
+
+  const save = () => {
+    if (!form.nome) {
+      alert('Inserisci il nome della cliente');
+      return;
+    }
+    const nuovo: Cliente = {
+      id: uid(),
+      nome: form.nome,
+      email: form.email,
+      tel: form.tel,
+      tipo: form.tipo || 'viso',
+      stato: form.stato || 'nuovo',
+      compleanno: form.compleanno,
+      noteVisoCorpo: form.noteVisoCorpo,
+    };
+    setClienti([...clienti, nuovo]);
+    setShowModal(false);
+    setForm({});
+    toast('Scheda cliente salvata');
+  };
+
+  const del = (id: string) => {
+    if (confirm('Eliminare la scheda di questa cliente?')) {
+      setClienti(clienti.filter(c => c.id !== id));
+      toast('Eliminato');
+    }
+  };
+
+  const lista = clienti
+    .filter(c => filtro === 'tutti' || c.tipo === filtro)
+    .filter(
+      c =>
+        !search ||
+        c.nome.toLowerCase().includes(search.toLowerCase()) ||
+        c.email?.toLowerCase().includes(search.toLowerCase()) ||
+        c.tel?.includes(search)
+    );
+
+  const spesaTotaleCliente = (id: string) =>
+    movimenti.filter(m => m.tipo === 'entrata' && m.clienteId === id).reduce((a, m) => a + m.importo, 0);
+
+  return (
+    <div>
+      <div className="section-header">
+        <h2>Clienti & Schede Viso/Corpo</h2>
+        <button
+          className="btn primary"
+          onClick={() => {
+            setForm({});
+            setShowModal(true);
+          }}
+        >
+          <i className="ti ti-user-plus" />Nuova Cliente
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        <input
+          type="text"
+          placeholder="Cerca per nome, tel, email..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{ maxWidth: 240 }}
+        />
+        <div className="chips">
+          {['tutti', 'viso', 'corpo', 'epilazione', 'altro'].map(f => (
+            <button key={f} className={`chip${filtro === f ? ' active' : ''}`} onClick={() => setFiltro(f)}>
+              {f !== 'tutti' && <i className={`ti ${TIPO_ICON[f]}`} />}
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="client-grid">
+        {lista.length ? (
+          lista.map(c => (
+            <div className="client-card" key={c.id}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <div className="avatar">{initials(c.nome)}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      fontSize: 14,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {c.nome}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+                    <i className={`ti ${TIPO_ICON[c.tipo] || 'ti-user'}`} /> Trattamento principale: {c.tipo}
+                  </div>
+                </div>
+              </div>
+              {c.email && (
+                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 3 }}>
+                  <i className="ti ti-mail" style={{ marginRight: 5 }} />
+                  {c.email}
+                </div>
+              )}
+              {c.tel && (
+                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 3 }}>
+                  <i className="ti ti-phone" style={{ marginRight: 5 }} />
+                  {c.tel}
+                </div>
+              )}
+              {c.noteVisoCorpo && (
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--text3)',
+                    marginTop: 6,
+                    fontStyle: 'italic',
+                    overflow: 'hidden',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                  }}
+                >
+                  Note: {c.noteVisoCorpo}
+                </div>
+              )}
+              <hr />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className={`badge ${STATO_BADGE[c.stato] || 'gray'}`}>{c.stato}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {spesaTotaleCliente(c.id) > 0 && (
+                    <span style={{ fontSize: 11, color: 'var(--green)', fontWeight: 600 }}>
+                      €{fmt(spesaTotaleCliente(c.id))}
+                    </span>
+                  )}
+                  <button className="btn sm danger ghost" onClick={() => del(c.id)}>
+                    <i className="ti ti-trash" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="empty" style={{ gridColumn: '1/-1' }}>
+            <i className="ti ti-users" />
+            <p>Nessuna cliente trovata</p>
+          </div>
+        )}
+      </div>
+
+      {showModal && (
+        <Modal
+          title="Nuova Scheda Cliente"
+          onClose={() => setShowModal(false)}
+          footer={
+            <>
+              <button className="btn" onClick={() => setShowModal(false)}>Annulla</button>
+              <button className="btn primary" onClick={save}>
+                <i className="ti ti-check" />Salva
+              </button>
+            </>
+          }
+        >
+          <div className="form-grid">
+            <div className="form-group">
+              <label>Nome e Cognome *</label>
+              <input
+                type="text"
+                placeholder="Laura Rossi"
+                value={form.nome || ''}
+                onChange={e => setForm({ ...form, nome: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                placeholder="laura@esempio.it"
+                value={form.email || ''}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>Telefono</label>
+              <input
+                type="text"
+                placeholder="+39 ..."
+                value={form.tel || ''}
+                onChange={e => setForm({ ...form, tel: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>Servizio Principale</label>
+              <select
+                value={form.tipo || 'viso'}
+                onChange={e => setForm({ ...form, tipo: e.target.value as Cliente['tipo'] })}
+              >
+                <option value="viso">Viso</option>
+                <option value="corpo">Corpo</option>
+                <option value="epilazione">Epilazione</option>
+                <option value="altro">Altro</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Stato</label>
+              <select
+                value={form.stato || 'nuovo'}
+                onChange={e => setForm({ ...form, stato: e.target.value as Cliente['stato'] })}
+              >
+                <option value="nuovo">Nuovo</option>
+                <option value="attivo">Attivo</option>
+                <option value="vip">VIP</option>
+                <option value="inattivo">Inattivo</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Data di Nascita</label>
+              <input
+                type="date"
+                value={form.compleanno || ''}
+                onChange={e => setForm({ ...form, compleanno: e.target.value })}
+              />
+            </div>
+            <div className="form-group full">
+              <label>Anamnesi / Note Viso-Corpo (Allergie, sensibilità, prodotti preferiti)</label>
+              <textarea
+                placeholder="Pelle sensibile a..., preferisce oli leggeri, utilizza crema X..."
+                value={form.noteVisoCorpo || ''}
+                onChange={e => setForm({ ...form, noteVisoCorpo: e.target.value })}
+              />
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
 
 
 --- FILE: \components\Dashboard.tsx ---
 "use client";
 import React from 'react';
 import { Movimento, Cliente, Appuntamento, ProdottoMagazzino } from '@/types';
-import { fmt, fmtDate, MESI } from '@/lib/utils';
+import { fmt, MESI } from '@/lib/utils';
 
 interface DashboardProps {
   movimenti: Movimento[];
@@ -1231,13 +2040,14 @@ const TITOLI: Record<Section, string> = {
 
 interface TopbarProps {
   section: Section;
+  onLogout?: () => void;
 }
 
-export default function Topbar({ section }: TopbarProps) {
+export default function Topbar({ section, onLogout }: TopbarProps) {
   return (
     <header className="topbar">
       <span className="topbar-title">{TITOLI[section]}</span>
-      <div className="topbar-right">
+      <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <span className="date-badge">
           {new Date().toLocaleDateString('it-IT', {
             weekday: 'short',
@@ -1246,6 +2056,11 @@ export default function Topbar({ section }: TopbarProps) {
             year: 'numeric',
           })}
         </span>
+        {onLogout && (
+          <button className="btn sm ghost" onClick={onLogout} style={{ background: '#fff1f2', color: '#e11d48', borderColor: '#fca5a5' }}>
+            <i className="ti ti-lock" /> Blocca Schermo
+          </button>
+        )}
       </div>
     </header>
   );
