@@ -28,6 +28,8 @@ const STATO_BADGE: Record<string, string> = {
 export default function Clienti({ clienti, setClienti, movimenti, toast }: ClientiProps) {
   const [filtro, setFiltro] = useState('tutti');
   const [showModal, setShowModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [vcardText, setVcardText] = useState('');
   const [form, setForm] = useState<Partial<Cliente>>({});
   const [search, setSearch] = useState('');
 
@@ -50,6 +52,50 @@ export default function Clienti({ clienti, setClienti, movimenti, toast }: Clien
     setShowModal(false);
     setForm({});
     toast('Scheda cliente salvata');
+  };
+
+  // Funzione per importare massivamente le vCard
+  const importVcards = () => {
+    if (!vcardText.trim()) {
+      alert('Incolla il testo delle vCard');
+      return;
+    }
+
+    const cards = vcardText.split('BEGIN:VCARD');
+    let addedCount = 0;
+    const nuoviClienti: Cliente[] = [...clienti];
+
+    cards.forEach(card => {
+      if (!card.includes('FN:')) return;
+
+      // Estrai Nome (FN)
+      const fnMatch = card.match(/FN:(.*)/);
+      const nome = fnMatch ? fnMatch[1].trim() : '';
+
+      // Estrai Telefono (TEL)
+      const telMatch = card.match(/TEL[^:]*:(.*)/);
+      const tel = telMatch ? telMatch[1].trim() : '';
+
+      if (nome) {
+        // Evita duplicati basati sul nome o telefono
+        const esiste = nuoviClienti.some(c => c.nome.toLowerCase() === nome.toLowerCase());
+        if (!esiste) {
+          nuoviClienti.push({
+            id: uid(),
+            nome: nome,
+            tel: tel || undefined,
+            tipo: 'viso',
+            stato: 'nuovo',
+          });
+          addedCount++;
+        }
+      }
+    });
+
+    setClienti(nuoviClienti);
+    setShowImportModal(false);
+    setVcardText('');
+    toast(`Importate con successo ${addedCount} nuove schede cliente!`);
   };
 
   const del = (id: string) => {
@@ -76,15 +122,24 @@ export default function Clienti({ clienti, setClienti, movimenti, toast }: Clien
     <div>
       <div className="section-header">
         <h2>Clienti & Schede Viso/Corpo</h2>
-        <button
-          className="btn primary"
-          onClick={() => {
-            setForm({});
-            setShowModal(true);
-          }}
-        >
-          <i className="ti ti-user-plus" />Nuova Cliente
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            className="btn"
+            onClick={() => setShowImportModal(true)}
+            style={{ background: '#ecfdf5', color: '#059669', borderColor: '#a7f3d0' }}
+          >
+            <i className="ti ti-address-book" /> Importa da Contatti
+          </button>
+          <button
+            className="btn primary"
+            onClick={() => {
+              setForm({});
+              setShowModal(true);
+            }}
+          >
+            <i className="ti ti-user-plus" /> Nuova Cliente
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -156,7 +211,7 @@ export default function Clienti({ clienti, setClienti, movimenti, toast }: Clien
                   Note: {c.noteVisoCorpo}
                 </div>
               )}
-              <hr />
+              <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '8px 0' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className={`badge ${STATO_BADGE[c.stato] || 'gray'}`}>{c.stato}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -180,6 +235,39 @@ export default function Clienti({ clienti, setClienti, movimenti, toast }: Clien
         )}
       </div>
 
+      {/* MODALE IMPORTAZIONE MASSIVA VCARD */}
+      {showImportModal && (
+        <Modal
+          title="Importa Contatti da vCard"
+          onClose={() => setShowImportModal(false)}
+          footer={
+            <>
+              <button className="btn" onClick={() => setShowImportModal(false)}>Annulla</button>
+              <button className="btn primary" onClick={importVcards}>
+                <i className="ti ti-check" /> Importa Tutti i Contatti
+              </button>
+            </>
+          }
+        >
+          <div className="form-grid">
+            <div className="form-group full">
+              <label>Incolla qui tutto il testo dei contatti (vCard):</label>
+              <textarea
+                rows={10}
+                placeholder="Incolla qui la lista BEGIN:VCARD ... END:VCARD..."
+                value={vcardText}
+                onChange={e => setVcardText(e.target.value)}
+                style={{ fontFamily: 'monospace', fontSize: 11 }}
+              />
+              <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
+                Il sistema estrarrà automaticamente nome e numero di telefono di tutti i contatti, saltando i duplicati.
+              </span>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* MODALE SINGOLA CLIENTE */}
       {showModal && (
         <Modal
           title="Nuova Scheda Cliente"
@@ -254,9 +342,9 @@ export default function Clienti({ clienti, setClienti, movimenti, toast }: Clien
               />
             </div>
             <div className="form-group full">
-              <label>Anamnesi / Note Viso-Corpo (Allergie, sensibilità, prodotti preferiti)</label>
+              <label>Anamnesi / Note Viso-Corpo</label>
               <textarea
-                placeholder="Pelle sensibile a..., preferisce oli leggeri, utilizza crema X..."
+                placeholder="Note sul trattamento..."
                 value={form.noteVisoCorpo || ''}
                 onChange={e => setForm({ ...form, noteVisoCorpo: e.target.value })}
               />
